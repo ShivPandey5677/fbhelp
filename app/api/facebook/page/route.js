@@ -31,6 +31,8 @@ async function verifyTokenFromDatabase(token) {
     return data.user_id;
 }
 
+export { generateAndStoreToken };
+
 export async function GET(request) {
     try {
         const token = getTokenFromRequest(request);
