@@ -1,23 +1,24 @@
 import { NextResponse } from 'next/server'
-import { getTokenFromRequest, verifyToken, verifyTokenFromDatabase } from '@/lib/auth'
+import { getTokenFromRequest, verifyTokenFromDatabase } from '@/lib/auth'
+
+async function authenticateRequest(request) {
+  const token = getTokenFromRequest(request)
+  if (!token) {
+    return NextResponse.json({ error: 'No token provided' }, { status: 401 })
+  }
+
+  const userId = await verifyTokenFromDatabase(token)
+  if (!userId) {
+    return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+  }
+
+  return userId
+}
 
 export async function GET(request, { params }) {
   try {
-    const token = getTokenFromRequest(request)
-    if (!token) {
-      return NextResponse.json(
-        { error: 'No token provided' },
-        { status: 401 }
-      )
-    }
-
-    const userId = await verifyTokenFromDatabase(token)
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'Invalid token' },
-        { status: 401 }
-      )
-    }
+    const userId = await authenticateRequest(request)
+    if (!userId) return
 
     const customerId = params.id
 

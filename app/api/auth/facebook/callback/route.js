@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { exchangeCodeForToken, FacebookAPI } from '@/lib/facebook'
-import { verifyTokenFromDatabase, supabaseAdmin } from '@/lib/auth'
+import { verifyToken, supabaseAdmin } from '@/lib/auth'
 
 // Opt out of static generation
 // https://nextjs.org/docs/app/api-reference/file-conventions/route-segment-config
@@ -25,9 +25,9 @@ export async function GET(request) {
     const userAccessToken = tokenData.access_token
 
     // state carries our JWT so we know which user connected page
-    const userId = await verifyTokenFromDatabase(state || '')
-    if (!userId) {
-      return NextResponse.redirect('/integration?error=invalid_state')
+    const decoded = verifyToken(state || '')
+    if (!decoded) {
+      throw new Error('Invalid state')
     }
 
     // Fetch pages the user manages
@@ -44,12 +44,12 @@ export async function GET(request) {
 
     // Save / upsert in facebook_pages table
     await supabaseAdmin.from('facebook_pages').upsert({
-      user_id: userId,
+      user_id: decoded.userId,
       page_id: page.id,
       page_name: page.name,
       access_token: page.access_token
     }, { onConflict: 'user_id' })
-    
+
     // Use absolute URL for redirect
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
     return NextResponse.redirect(`${baseUrl}/integration?success=true`)

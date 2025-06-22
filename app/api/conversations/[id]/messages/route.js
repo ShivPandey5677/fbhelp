@@ -1,26 +1,32 @@
 import { NextResponse } from 'next/server'
-import { getTokenFromRequest, verifyToken, verifyTokenFromDatabase } from '@/lib/auth'
+import { getTokenFromRequest } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase'
 import { FacebookAPI } from '@/lib/facebook'
 
+async function authenticateRequest(request) {
+  const token = getTokenFromRequest(request)
+  if (!token) {
+    return NextResponse.json(
+      { error: 'No token provided' },
+      { status: 401 }
+    )
+  }
+
+  const userId = await verifyTokenFromDatabase(token)
+  if (!userId) {
+    return NextResponse.json(
+      { error: 'Invalid token' },
+      { status: 401 }
+    )
+  }
+
+  return userId
+}
+
 export async function GET(request, { params }) {
   try {
-    const token = getTokenFromRequest(request)
-
-    if (!token) {
-      return NextResponse.json(
-        { error: 'No token provided' },
-        { status: 401 }
-      )
-    }
-
-    const userId = await verifyTokenFromDatabase(token)
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'Invalid token' },
-        { status: 401 }
-      )
-    }
+    const userId = await authenticateRequest(request)
+    if (!userId) return
 
     const { data: messages, error } = await supabaseAdmin
       .from('messages')
@@ -42,22 +48,8 @@ export async function GET(request, { params }) {
 
 export async function POST(request, { params }) {
   try {
-    const token = getTokenFromRequest(request)
-
-    if (!token) {
-      return NextResponse.json(
-        { error: 'No token provided' },
-        { status: 401 }
-      )
-    }
-
-    const userId = await verifyTokenFromDatabase(token)
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'Invalid token' },
-        { status: 401 }
-      )
-    }
+    const userId = await authenticateRequest(request)
+    if (!userId) return
 
     const { message } = await request.json()
     if (!message) {
@@ -67,7 +59,6 @@ export async function POST(request, { params }) {
       )
     }
 
-    // Get conversation to find page_id
     const { data: conversation, error: convError } = await supabaseAdmin
       .from('conversations')
       .select('page_id, customer_id')
@@ -78,7 +69,6 @@ export async function POST(request, { params }) {
       throw new Error('Conversation not found')
     }
 
-    // Save to database
     const { data: savedMessage, error: saveError } = await supabaseAdmin
       .from('messages')
       .insert([
@@ -95,7 +85,6 @@ export async function POST(request, { params }) {
 
     if (saveError) throw saveError
 
-    // Send via Facebook API
     const fbApi = new FacebookAPI()
     await fbApi.sendMessage({
       recipient: { id: conversation.customer_id },

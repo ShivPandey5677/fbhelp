@@ -18,15 +18,12 @@ export async function POST(request) {
     // Create the user using our auth function
     const user = await createUser(name, email, password)
 
-    // Removed token generation during signup to avoid redundancy
-    // await generateAndStoreToken(user.id)
-
     // The user will need to confirm their email before logging in
     return NextResponse.json({
       message: 'Registration successful! Please check your email to confirm your account.',
-      user: { 
-        id: user.id, 
-        name: user.name, 
+      user: {
+        id: user.id,
+        name: user.name,
         email: user.email,
         emailConfirmed: false
       }

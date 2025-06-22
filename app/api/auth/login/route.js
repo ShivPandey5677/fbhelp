@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/auth'
-import { generateAndStoreToken } from '@/lib/auth'
 
 export async function POST(request) {
   try {
@@ -42,12 +41,12 @@ export async function POST(request) {
       )
     }
 
-    // Generate and store a new token for the user
-    const token = await generateAndStoreToken(data.user.id);
+    // Get the session
+    const { data: { session } } = await supabase.auth.getSession()
 
     const res = NextResponse.json({
       message: 'Login successful',
-      token: token,
+      token: session.access_token,
       user: {
         id: userData.id,
         name: userData.name,
@@ -55,16 +54,17 @@ export async function POST(request) {
       }
     })
 
-    // Store the JWT in an HttpOnly cookie
+    // Also store the JWT in an HttpOnly cookie so that normal page navigations
+    // automatically include it in requests to /api/* routes.
     res.cookies.set({
       name: 'token',
-      value: token,
+      value: session.access_token,
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
       maxAge: 60 * 60 * 24 * 7 // 7 days
-    });
+    })
 
     return res
   } catch (error) {
