@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getTokenFromRequest, verifyTokenFromDatabase, supabaseAdmin } from '@/lib/auth'
+import { getTokenFromRequest, verifyTokenFromDatabase, getTokenByUserId, supabaseAdmin } from '@/lib/auth'
 import { FacebookAPI } from '@/lib/facebook'
 
 // Opt out of static generation
@@ -20,11 +20,19 @@ export async function GET(request) {
 
     const userId = await verifyTokenFromDatabase(token);
     if (!userId) {
-      return NextResponse.json(
-        { error: 'Invalid token' },
-        { status: 401 }
-      );
+      console.error('Invalid token or token verification failed');
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
+
+    console.log('Token verified for user:', userId);
+
+    // Retrieve token using userId
+    const userToken = await getTokenByUserId(userId);
+    if (!userToken) {
+      return NextResponse.json({ error: 'Failed to retrieve user token' }, { status: 401 });
+    }
+
+    console.log('User token retrieved:', userToken);
 
     // Fetch user pages
     const { data: pagesData, error: pagesError } = await supabaseAdmin

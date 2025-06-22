@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getTokenFromRequest, generateAndStoreToken } from '@/lib/auth'
+import { getTokenFromRequest, generateAndStoreToken, getTokenByUserId } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 import { v4 as uuidv4 } from 'uuid';
 
@@ -20,14 +20,26 @@ async function verifyTokenFromDatabase(token) {
 export async function GET(request) {
     try {
         const token = getTokenFromRequest(request);
+        console.log('Retrieved token from request:', token);
         if (!token) {
             return NextResponse.json({ error: 'No token provided' }, { status: 401 });
         }
 
         const userId = await verifyTokenFromDatabase(token);
         if (!userId) {
+            console.error('Invalid token or token verification failed');
             return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
         }
+
+        console.log('Token verified for user:', userId);
+
+        // Retrieve token using userId
+        const userToken = await getTokenByUserId(userId);
+        if (!userToken) {
+            return NextResponse.json({ error: 'Failed to retrieve user token' }, { status: 401 });
+        }
+
+        console.log('User token retrieved:', userToken);
 
         const { data: page, error } = await supabase
             .from('facebook_pages')
@@ -57,6 +69,16 @@ export async function POST(request) {
         if (!userId) {
             return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
         }
+
+        console.log('Token verified for user:', userId);
+
+        // Retrieve token using userId
+        const userToken = await getTokenByUserId(userId);
+        if (!userToken) {
+            return NextResponse.json({ error: 'Failed to retrieve user token' }, { status: 401 });
+        }
+
+        console.log('User token retrieved:', userToken);
 
         const { page_id, page_name, access_token } = await request.json();
         if (!page_id || !page_name || !access_token) {
@@ -91,6 +113,16 @@ export async function DELETE(request) {
         if (!userId) {
             return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
         }
+
+        console.log('Token verified for user:', userId);
+
+        // Retrieve token using userId
+        const userToken = await getTokenByUserId(userId);
+        if (!userToken) {
+            return NextResponse.json({ error: 'Failed to retrieve user token' }, { status: 401 });
+        }
+
+        console.log('User token retrieved:', userToken);
 
         const { error } = await supabase
             .from('facebook_pages')
