@@ -44,7 +44,7 @@ async function authenticateRequest(request) {
 export async function GET(request) {
   try {
     const userId = await authenticateRequest(request)
-    if (!userId) return
+    if (!userId) return new Response('Unauthorized', { status: 401 })
 
     const { data: user, error } = await supabase
       .from('users')
@@ -54,18 +54,12 @@ export async function GET(request) {
 
     if (error) throw error
     if (!user) {
-      return NextResponse.json(
-        { error: 'User profile not found' },
-        { status: 404 }
-      )
+      return new Response(JSON.stringify({ error: 'User profile not found' }), { status: 404 })
     }
 
-    return NextResponse.json(user)
+    return new Response(JSON.stringify(user), { status: 200 })
   } catch (error) {
     console.error('Auth check error:', error)
-    return NextResponse.json(
-      { error: 'Authentication failed' },
-      { status: 401 }
-    )
+    return new Response(JSON.stringify({ error: 'Authentication failed' }), { status: 401 })
   }
 }
