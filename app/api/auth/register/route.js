@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createUser } from '@/lib/auth'
 import { supabase } from '@/lib/auth'
+import { generateAndStoreToken } from '@/lib/auth'
 
 export async function POST(request) {
   try {
@@ -17,7 +18,10 @@ export async function POST(request) {
 
     // Create the user using our auth function
     const user = await createUser(name, email, password)
-    
+
+    // Generate and store token for the new user
+    await generateAndStoreToken(user.id)
+
     // The user will need to confirm their email before logging in
     return NextResponse.json({
       message: 'Registration successful! Please check your email to confirm your account.',

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/auth'
+import { verifyTokenFromDatabase } from '@/lib/auth'
 
 export async function POST(request) {
   try {
@@ -41,12 +42,18 @@ export async function POST(request) {
       )
     }
 
-    // Get the session
-    const { data: { session } } = await supabase.auth.getSession()
+    // Retrieve the token for the user
+    const token = await verifyTokenFromDatabase(data.user.id);
+    if (!token) {
+      return NextResponse.json(
+        { error: 'Failed to retrieve token' },
+        { status: 500 }
+      );
+    }
 
     const res = NextResponse.json({
       message: 'Login successful',
-      token: session.access_token,
+      token: token,
       user: {
         id: userData.id,
         name: userData.name,
@@ -54,17 +61,16 @@ export async function POST(request) {
       }
     })
 
-    // Also store the JWT in an HttpOnly cookie so that normal page navigations
-    // automatically include it in requests to /api/* routes.
+    // Also store the JWT in an HttpOnly cookie
     res.cookies.set({
       name: 'token',
-      value: session.access_token,
+      value: token,
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
       maxAge: 60 * 60 * 24 * 7 // 7 days
-    })
+    });
 
     return res
   } catch (error) {
