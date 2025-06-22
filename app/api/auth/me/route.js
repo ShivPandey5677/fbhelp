@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { verifyTokenFromDatabase } from '@/lib/auth';
 
 // Create a Supabase client with the auth token from the request
 const supabase = createClient(
@@ -31,20 +32,19 @@ export async function GET(request) {
     }
 
     // Verify the token with Supabase
-    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(token)
-    
-    if (authError || !authUser) {
+    const userId = await verifyTokenFromDatabase(token);
+    if (!userId) {
       return NextResponse.json(
         { error: 'Invalid token' },
         { status: 401 }
-      )
+      );
     }
 
     // Get the user's profile from the public.users table
     const { data: user, error } = await supabase
       .from('users')
       .select('id, name, email')
-      .eq('id', authUser.id)
+      .eq('id', userId)
       .single()
 
     if (error) throw error
