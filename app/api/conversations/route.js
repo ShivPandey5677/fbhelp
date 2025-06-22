@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getTokenFromRequest } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase'
-import { FacebookAPI } from '@/lib/facebook'
 
 // Opt out of static generation
 export const dynamic = 'force-dynamic'
@@ -11,12 +10,12 @@ export const fetchCache = 'force-no-store'
 async function authenticateRequest(request) {
   const token = getTokenFromRequest(request)
   if (!token) {
-    return NextResponse.json({ error: 'No token provided' }, { status: 401 })
+    return new Response(JSON.stringify({ error: 'No token provided' }), { status: 401 })
   }
 
   const userId = await verifyTokenFromDatabase(token)
   if (!userId) {
-    return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    return new Response(JSON.stringify({ error: 'Invalid token' }), { status: 401 })
   }
 
   return userId
@@ -25,14 +24,7 @@ async function authenticateRequest(request) {
 export async function GET(request) {
   try {
     const userId = await authenticateRequest(request)
-    if (!userId) return
-
-    const { data: pagesData, error: pagesError } = await supabaseAdmin
-      .from('facebook_pages')
-      .select('page_id, page_name, access_token')
-      .eq('user_id', userId)
-
-    if (pagesError) throw pagesError
+    if (!userId) return new Response('Unauthorized', { status: 401 })
 
     const { data: conversationsData, error: convError } = await supabaseAdmin
       .from('conversations')
@@ -63,12 +55,9 @@ export async function GET(request) {
       })
     }
 
-    return NextResponse.json({ conversations })
+    return new Response(JSON.stringify({ conversations }), { status: 200 })
   } catch (error) {
     console.error('Get conversations error:', error)
-    return NextResponse.json(
-      { error: 'Failed to get conversations' },
-      { status: 500 }
-    )
+    return new Response(JSON.stringify({ error: 'Failed to get conversations' }), { status: 500 })
   }
 }
