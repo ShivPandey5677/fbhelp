@@ -1,21 +1,7 @@
 import { NextResponse } from 'next/server'
-import { getTokenFromRequest } from '@/lib/auth'
+import { getTokenFromRequest, generateAndStoreToken } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 import { v4 as uuidv4 } from 'uuid';
-
-// Function to generate a new token and store it in the database
-async function generateAndStoreToken(userId) {
-    const token = uuidv4();
-    const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 1); // Token valid for 1 hour
-
-    const { error } = await supabase
-        .from('tokens')
-        .insert({ user_id: userId, token, expires_at: expiresAt });
-
-    if (error) throw error;
-    return token;
-}
 
 // Function to verify token from the database
 async function verifyTokenFromDatabase(token) {
@@ -30,8 +16,6 @@ async function verifyTokenFromDatabase(token) {
     }
     return data.user_id;
 }
-
-export { generateAndStoreToken };
 
 export async function GET(request) {
     try {
