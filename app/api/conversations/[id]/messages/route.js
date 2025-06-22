@@ -6,18 +6,12 @@ import { FacebookAPI } from '@/lib/facebook'
 async function authenticateRequest(request) {
   const token = getTokenFromRequest(request)
   if (!token) {
-    return NextResponse.json(
-      { error: 'No token provided' },
-      { status: 401 }
-    )
+    return new Response(JSON.stringify({ error: 'No token provided' }), { status: 401 })
   }
 
   const userId = await verifyTokenFromDatabase(token)
   if (!userId) {
-    return NextResponse.json(
-      { error: 'Invalid token' },
-      { status: 401 }
-    )
+    return new Response(JSON.stringify({ error: 'Invalid token' }), { status: 401 })
   }
 
   return userId
@@ -26,7 +20,7 @@ async function authenticateRequest(request) {
 export async function GET(request, { params }) {
   try {
     const userId = await authenticateRequest(request)
-    if (!userId) return
+    if (!userId) return new Response('Unauthorized', { status: 401 })
 
     const { data: messages, error } = await supabaseAdmin
       .from('messages')
@@ -36,50 +30,39 @@ export async function GET(request, { params }) {
 
     if (error) throw error
 
-    return NextResponse.json({ messages })
+    return new Response(JSON.stringify({ messages }), { status: 200 })
   } catch (error) {
     console.error('Error fetching messages:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch messages' },
-      { status: 500 }
-    )
+    return new Response(JSON.stringify({ error: 'Failed to fetch messages' }), { status: 500 })
   }
 }
 
 export async function POST(request, { params }) {
   try {
     const userId = await authenticateRequest(request)
-    if (!userId) return
+    if (!userId) return new Response('Unauthorized', { status: 401 })
 
     const { message } = await request.json()
     if (!message) {
-      return NextResponse.json(
-        { error: 'Message is required' },
-        { status: 400 }
-      )
+      return new Response(JSON.stringify({ error: 'Message is required' }), { status: 400 })
     }
 
     const { data: conversation, error: convError } = await supabaseAdmin
       .from('conversations')
-      .select('page_id, customer_id')
+      .select('*')
       .eq('id', params.id)
       .single()
 
-    if (convError || !conversation) {
-      throw new Error('Conversation not found')
-    }
+    if (convError) throw convError
 
     const { data: savedMessage, error: saveError } = await supabaseAdmin
       .from('messages')
-      .insert([
-        {
-          conversation_id: params.id,
-          sender_type: 'agent',
-          body: message,
-          customer_id: conversation.customer_id,
-          page_id: conversation.page_id
-        }
-      ])
+      .insert({
+        conversation_id: params.id,
+        body: message,
+        customer_id: conversation.customer_id,
+        page_id: conversation.page_id
+      })
       .select()
       .single()
 
@@ -91,12 +74,9 @@ export async function POST(request, { params }) {
       message: { text: message }
     })
 
-    return NextResponse.json({ message: savedMessage })
+    return new Response(JSON.stringify({ message: savedMessage }), { status: 200 })
   } catch (error) {
     console.error('Error sending message:', error)
-    return NextResponse.json(
-      { error: 'Failed to send message' },
-      { status: 500 }
-    )
+    return new Response(JSON.stringify({ error: 'Failed to send message' }), { status: 500 })
   }
 }
