@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getTokenFromRequest, verifyToken } from '@/lib/auth'
+import { getTokenFromRequest, verifyToken, verifyTokenFromDatabase } from '@/lib/auth'
 
 export async function GET(request, { params }) {
   try {
@@ -11,8 +11,8 @@ export async function GET(request, { params }) {
       )
     }
 
-    const decoded = verifyToken(token)
-    if (!decoded) {
+    const userId = await verifyTokenFromDatabase(token)
+    if (!userId) {
       return NextResponse.json(
         { error: 'Invalid token' },
         { status: 401 }

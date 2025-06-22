@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getTokenFromRequest, verifyToken } from '@/lib/auth'
+import { getTokenFromRequest, verifyToken, verifyTokenFromDatabase } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase'
 import { FacebookAPI } from '@/lib/facebook'
 
@@ -14,8 +14,8 @@ export async function GET(request, { params }) {
       )
     }
 
-    const decoded = verifyToken(token)
-    if (!decoded) {
+    const userId = await verifyTokenFromDatabase(token)
+    if (!userId) {
       return NextResponse.json(
         { error: 'Invalid token' },
         { status: 401 }
@@ -51,8 +51,8 @@ export async function POST(request, { params }) {
       )
     }
 
-    const decoded = verifyToken(token)
-    if (!decoded) {
+    const userId = await verifyTokenFromDatabase(token)
+    if (!userId) {
       return NextResponse.json(
         { error: 'Invalid token' },
         { status: 401 }
